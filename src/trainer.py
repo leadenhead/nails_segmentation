@@ -15,6 +15,7 @@ import torch
 import warnings
 import pickle
 import json
+
 warnings.filterwarnings("ignore")
 
 
@@ -38,43 +39,45 @@ class Trainer:
 
     def get_model(self):
 
-        ENCODER = 'resnet101'
-        ENCODER_WEIGHTS = 'imagenet'
-        CLASSES = self.class_names
-        ACTIVATION = 'sigmoid' # could be None for logits or 'softmax2d' for multiclass segmentation
+        encoder = 'resnet101'
+        encoder_weights = 'imagenet'
+        classes = self.class_names
+        activation = 'sigmoid'  # could be None for logits or 'softmax2d' for multiclass segmentation
 
         # create segmentation model with pretrained encoder
         model = smp.DeepLabV3Plus(
-            encoder_name=ENCODER, 
-            encoder_weights=ENCODER_WEIGHTS, 
-            classes=len(CLASSES), 
-            activation=ACTIVATION,
+            encoder_name=encoder,
+            encoder_weights=encoder_weights,
+            classes=len(classes),
+            activation=activation,
         )
 
-        preprocessing_fn = smp.encoders.get_preprocessing_fn(ENCODER, ENCODER_WEIGHTS)
+        preprocessing_fn = smp.encoders.get_preprocessing_fn(encoder, encoder_weights)
         preprocessing_fn_path = get_final_path(1, ['model', 'preprocessing_fn.pkl'])
         pickle.dump(preprocessing_fn, open(preprocessing_fn_path, 'wb'))
 
         return model, preprocessing_fn
-    
+
     def get_datasets(self, preprocessing_fn):
 
-        train_dataset = NailDataset(self.x_train_dir, self.y_train_dir, augmentation = get_training_augmentation(), preprocessing = get_preprocessing(preprocessing_fn), class_rgb_values = self.select_class_rgb_values)
-        valid_dataset = NailDataset(self.x_valid_dir, self.y_valid_dir, augmentation = get_validation_augmentation(), preprocessing = get_preprocessing(preprocessing_fn), class_rgb_values = self.select_class_rgb_values)
+        train_dataset = NailDataset(self.x_train_dir, self.y_train_dir, augmentation=get_training_augmentation(),
+                                    preprocessing=get_preprocessing(preprocessing_fn),
+                                    class_rgb_values=self.select_class_rgb_values)
+        valid_dataset = NailDataset(self.x_valid_dir, self.y_valid_dir, augmentation=get_validation_augmentation(),
+                                    preprocessing=get_preprocessing(preprocessing_fn),
+                                    class_rgb_values=self.select_class_rgb_values)
 
         return train_dataset, valid_dataset
-
 
     def train(self, model, train_dataset, valid_dataset):
 
         train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True, num_workers=0)
         valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False, num_workers=0)
 
-        TRAINING = True
+        training = True
 
         # Set num of epochs
-        EPOCHS = self.config['epochs']
-
+        epochs = self.config['epochs']
 
         # define loss function
         #loss = smp.utils.losses.DiceLoss()
@@ -88,7 +91,7 @@ class Trainer:
         ]
 
         # define optimizer
-        optimizer = torch.optim.Adam([ 
+        optimizer = torch.optim.Adam([
             dict(params=model.parameters(), lr=self.config['lr']),
         ])
 
@@ -101,33 +104,32 @@ class Trainer:
         # load best saved model checkpoint from previous commit (if present)
         if os.path.exists(best_model_path) and self.is_cont == True:
             model = torch.load(best_model_path, map_location=self.device)
-        
+
         train_epoch = utils.train.TrainEpoch(
-                                            model, 
-                                            loss=loss,
-                                            metrics=metrics, 
-                                            optimizer=optimizer,
-                                            device=self.device,
-                                            #device='mps',
-                                            verbose=True,
+            model,
+            loss=loss,
+            metrics=metrics,
+            optimizer=optimizer,
+            device=self.device,
+            #device='mps',
+            verbose=True,
         )
 
         valid_epoch = utils.train.ValidEpoch(
-                                        model, 
-                                        loss=loss, 
-                                        metrics=metrics, 
-                                        device=self.device,
-                                        #device='mps',
-                                        verbose=True,
+            model,
+            loss=loss,
+            metrics=metrics,
+            device=self.device,
+            #device='mps',
+            verbose=True,
         )
 
-
-        if TRAINING:
+        if training:
 
             best_iou_score = 0.0
             train_logs_list, valid_logs_list = [], []
 
-            for i in range(0, EPOCHS):
+            for i in range(0, epochs):
 
                 # Perform training & validation
                 print('\nEpoch: {}'.format(i))
@@ -149,6 +151,3 @@ class Trainer:
         self.train(model, train_dataset, valid_dataset)
 
         return
-
-
-

@@ -12,7 +12,8 @@ from dataset_builder import NailDataset
 from torch.utils.data import DataLoader
 import os
 
-class Evaluator: 
+
+class Evaluator:
 
     def __init__(self, select_class_rgb_values, device):
 
@@ -27,7 +28,7 @@ class Evaluator:
             pass
         self.x_test_dir = os.path.join(processed_base_data_path, 'test')
         self.y_test_dir = os.path.join(processed_base_data_path, 'test_labels')
-        self.model = torch.load(model_path, map_location = device)
+        self.model = torch.load(model_path, map_location=device)
         self.preprocessing_fn = pickle.load(open(preprocessing_fn_path, 'rb'))
         self.select_class_rgb_values = select_class_rgb_values
         self.device = device
@@ -43,23 +44,22 @@ class Evaluator:
             utils.metrics.IoU(threshold=0.5),
         ]
 
-
         test_dataset = NailDataset(
-        self.x_test_dir, 
-        self.y_test_dir, 
-        augmentation=get_validation_augmentation(), 
-        preprocessing=get_preprocessing(self.preprocessing_fn),
-        class_rgb_values=self.select_class_rgb_values,
+            self.x_test_dir,
+            self.y_test_dir,
+            augmentation=get_validation_augmentation(),
+            preprocessing=get_preprocessing(self.preprocessing_fn),
+            class_rgb_values=self.select_class_rgb_values,
         )
 
         test_dataloader = DataLoader(test_dataset)
 
         test_epoch = utils.train.ValidEpoch(
-        self.model,
-        loss=loss, 
-        metrics=metrics, 
-        device = self.device,
-        verbose=True,
+            self.model,
+            loss=loss,
+            metrics=metrics,
+            device=self.device,
+            verbose=True,
         )
 
         valid_logs = test_epoch.run(test_dataloader)
